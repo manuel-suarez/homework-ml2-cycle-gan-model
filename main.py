@@ -146,9 +146,8 @@ class CycleGAN(keras.Model):
         self.loss_obj = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
         # Metric trackers
-        self.total_loss_tracker = tf.keras.metrics.Mean(name="total_loss")
-        self.reconstruction_loss_tracker = tf.keras.metrics.Mean(name="reconstruction_loss")
-        self.kl_loss_tracker = tf.keras.metrics.Mean(name="kl_loss")
+        self.generator_g_loss_tracker = tf.keras.metrics.Mean(name="generator_g_loss")
+        self.generator_f_loss_tracker = tf.keras.metrics.Mean(name="generator_f_loss")
 
     @tf.function
     def train_step(self, data):
@@ -211,6 +210,14 @@ class CycleGAN(keras.Model):
 
         self.discriminator_y_optimizer.apply_gradients(zip(discriminator_y_gradients,
                                                       self.discriminator_y.trainable_variables))
+
+        # compute progress
+        self.generator_g_loss_tracker.update_state(gen_g_loss)
+        self.generator_f_loss_tracker.update_state(gen_f_loss)
+        return {
+            "generator_g_loss": self.generator_g_loss_tracker.result(),
+            "generator_f_loss": self.generator_f_loss_tracker.result(),
+        }
 
 cyclegan = CycleGAN(p_lambda=LAMBDA, summary=True)
 to_zebra = cyclegan.generator_g(sample_horse)
