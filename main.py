@@ -146,8 +146,11 @@ class CycleGAN(keras.Model):
         self.loss_obj = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
         # Metric trackers
-        self.generator_g_loss_tracker = tf.keras.metrics.Mean(name="generator_g_loss")
-        self.generator_f_loss_tracker = tf.keras.metrics.Mean(name="generator_f_loss")
+        self.total_cycle_loss_tracker = tf.keras.metrics.Mean(name="total_cycle_loss")
+        self.total_gen_g_loss_tracker = tf.keras.metrics.Mean(name="total_gen_g_loss")
+        self.total_gen_f_loss_tracker = tf.keras.metrics.Mean(name="total_gen_f_loss")
+        self.disc_x_loss_tracker = tf.keras.metrics.Mean(name="disc_x_loss")
+        self.disc_y_loss_tracker = tf.keras.metrics.Mean(name="disc_y_loss")
 
     @tf.function
     def train_step(self, data):
@@ -212,11 +215,17 @@ class CycleGAN(keras.Model):
                                                       self.discriminator_y.trainable_variables))
 
         # compute progress
-        self.generator_g_loss_tracker.update_state(gen_g_loss)
-        self.generator_f_loss_tracker.update_state(gen_f_loss)
+        self.total_cycle_loss_tracker.update_state(total_cycle_loss)
+        self.total_gen_g_loss_tracker.update_state(total_gen_g_loss)
+        self.total_gen_f_loss_tracker.update_state(total_gen_f_loss)
+        self.disc_x_loss_tracker.update_state(disc_x_loss)
+        self.disc_y_loss_tracker.update_state(disc_y_loss)
         return {
-            "generator_g_loss": self.generator_g_loss_tracker.result(),
-            "generator_f_loss": self.generator_f_loss_tracker.result(),
+            "total_cycle_loss": self.total_cycle_loss_tracker.result(),
+            "total_gen_g_loss": self.total_gen_g_loss_tracker.result(),
+            "total_gen_f_loss": self.total_gen_f_loss_tracker.result(),
+            "disc_x_loss": self.disc_x_loss_tracker.result(),
+            "disc_y_loss": self.disc_y_loss_tracker.result()
         }
 
 cyclegan = CycleGAN(p_lambda=LAMBDA, summary=True)
