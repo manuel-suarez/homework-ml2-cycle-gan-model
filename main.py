@@ -103,6 +103,24 @@ plt.savefig('figure_2.png')
 OUTPUT_CHANNELS = 3
 
 # Loss function
+# Loss Functions
+def discriminator_loss(loss_obj, real, generated):
+    real_loss = loss_obj(tf.ones_like(real), real)
+    generated_loss = loss_obj(tf.zeros_like(generated), generated)
+    total_disc_loss = real_loss + generated_loss
+    return total_disc_loss * 0.5
+
+def generator_loss(loss_obj, generated):
+    return loss_obj(tf.ones_like(generated), generated)
+
+def calc_cycle_loss(real_image, cycled_image):
+    loss1 = tf.reduce_mean(tf.abs(real_image - cycled_image))
+    return LAMBDA * loss1
+
+def identity_loss(real_image, same_image):
+    loss = tf.reduce_mean(tf.abs(real_image - same_image))
+    return LAMBDA * 0.5 * loss
+
 LAMBDA = 10
 
 class CycleGAN(keras.Model):
@@ -132,28 +150,6 @@ class CycleGAN(keras.Model):
         self.reconstruction_loss_tracker = tf.keras.metrics.Mean(name="reconstruction_loss")
         self.kl_loss_tracker = tf.keras.metrics.Mean(name="kl_loss")
 
-    # Loss Functions
-    @tf.function
-    def discriminator_loss(self, real, generated):
-      real_loss = self.loss_obj(tf.ones_like(real), real)
-      generated_loss = self.loss_obj(tf.zeros_like(generated), generated)
-      total_disc_loss = real_loss + generated_loss
-      return total_disc_loss * 0.5
-
-    @tf.function
-    def generator_loss(self, generated):
-      return self.loss_obj(tf.ones_like(generated), generated)
-
-    @tf.function
-    def calc_cycle_loss(self, real_image, cycled_image):
-      loss1 = tf.reduce_mean(tf.abs(real_image - cycled_image))
-      return LAMBDA * loss1
-
-    @tf.function
-    def identity_loss(self, real_image, same_image):
-      loss = tf.reduce_mean(tf.abs(real_image - same_image))
-      return LAMBDA * 0.5 * loss
-
     @tf.function
     def train_step(self, data):
         # persistent is set to True because the tape is used more than
@@ -180,17 +176,17 @@ class CycleGAN(keras.Model):
             disc_fake_y = self.discriminator_y(fake_y, training=True)
 
             # calculate the loss
-            gen_g_loss = self.generator_loss(disc_fake_y)
-            gen_f_loss = self.generator_loss(disc_fake_x)
+            gen_g_loss = generator_loss(self.loss_obj, disc_fake_y)
+            gen_f_loss = generator_loss(self.loss_obj, disc_fake_x)
 
-            total_cycle_loss = self.calc_cycle_loss(real_x, cycled_x) + self.calc_cycle_loss(real_y, cycled_y)
+            total_cycle_loss = calc_cycle_loss(real_x, cycled_x) + calc_cycle_loss(real_y, cycled_y)
 
             # Total generator loss = adversarial loss + cycle loss
-            total_gen_g_loss = gen_g_loss + total_cycle_loss + self.identity_loss(real_y, same_y)
-            total_gen_f_loss = gen_f_loss + total_cycle_loss + self.identity_loss(real_x, same_x)
+            total_gen_g_loss = gen_g_loss + total_cycle_loss + identity_loss(real_y, same_y)
+            total_gen_f_loss = gen_f_loss + total_cycle_loss + identity_loss(real_x, same_x)
 
-            disc_x_loss = self.discriminator_loss(disc_real_x, disc_fake_x)
-            disc_y_loss = self.discriminator_loss(disc_real_y, disc_fake_y)
+            disc_x_loss = discriminator_loss(self.loss_obj, disc_real_x, disc_fake_x)
+            disc_y_loss = discriminator_loss(self.loss_obj, disc_real_y, disc_fake_y)
 
         # Calculate the gradients for generator and discriminator
         generator_g_gradients = tape.gradient(total_gen_g_loss,
