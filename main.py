@@ -107,7 +107,7 @@ LAMBDA = 10
 
 class CycleGAN(keras.Model):
     def __init__(self, p_lambda=LAMBDA, summary=False, **kwargs):
-        super.__init__(CycleGAN, self).__init__(**kwargs)
+        super(CycleGAN, self).__init__(**kwargs)
         self.p_lambda = p_lambda
 
         # Architecture
